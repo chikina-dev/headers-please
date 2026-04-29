@@ -272,7 +272,7 @@ const resolveCurrentDay = (
   ) => void,
   day: NonNullable<ReturnType<typeof getCurrentDay>>,
   actionResultId: string | null,
-  reason: 'trafficExhausted' | 'shiftGoalMet' | 'incidentLimitExceeded',
+  reason: 'trafficExhausted' | 'shiftGoalMet' | 'incidentLimitExceeded' | 'shiftWindowExpired',
 ) => {
   const resolution = deriveDayResolution(day, getState().game.traffic, reason);
   const historyEntry = buildDayHistoryEntry(day, getState().game.traffic, resolution);
@@ -409,6 +409,10 @@ const finishDayIfShiftStateResolved = (
 
   if (progress.goal && progress.isComplete) {
     return resolveCurrentDay(getState, dispatch, day, actionResultId, 'shiftGoalMet');
+  }
+
+  if (progress.goal && progress.exhaustedActionBudget) {
+    return resolveCurrentDay(getState, dispatch, day, actionResultId, 'shiftWindowExpired');
   }
 
   return false;

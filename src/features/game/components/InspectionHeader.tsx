@@ -16,12 +16,16 @@ export function InspectionHeader({
     requiredRejects: number
     requiredCloses: number
     maxIncidents: number | null
+    maxActions: number | null
+    actionsElapsed: number
+    remainingActions: number | null
     successes: number
     rejects: number
     closes: number
     incidents: number
     isComplete: boolean
     exceededIncidentLimit: boolean
+    exhaustedActionBudget: boolean
   } | null
 }) {
   return (
@@ -32,13 +36,20 @@ export function InspectionHeader({
         {!isArchiveInspection && <p className="mt-2 text-sm text-stone-300">{currentCountLabel}</p>}
         {isArchiveInspection && <p className="mt-2 text-sm text-cyan-200">Archive Review</p>}
         {!isArchiveInspection && shiftGoalSummary && (
-          <p className="mt-2 text-xs font-semibold tracking-[0.04em] text-amber-200">
-            Shift Goal:
-            {shiftGoalSummary.requiredSuccesses > 0 && ` 成功 ${shiftGoalSummary.successes}/${shiftGoalSummary.requiredSuccesses}`}
-            {shiftGoalSummary.requiredRejects > 0 && ` 拒否 ${shiftGoalSummary.rejects}/${shiftGoalSummary.requiredRejects}`}
-            {shiftGoalSummary.requiredCloses > 0 && ` 終了 ${shiftGoalSummary.closes}/${shiftGoalSummary.requiredCloses}`}
-            {shiftGoalSummary.maxIncidents != null && ` 事故 ${shiftGoalSummary.incidents}/${shiftGoalSummary.maxIncidents}`}
-          </p>
+          <div className="mt-2 space-y-1 text-xs font-semibold tracking-[0.04em] text-amber-200">
+            <p>
+              Shift Goal:
+              {shiftGoalSummary.requiredSuccesses > 0 && ` 成功 ${shiftGoalSummary.successes}/${shiftGoalSummary.requiredSuccesses}`}
+              {shiftGoalSummary.requiredRejects > 0 && ` 拒否 ${shiftGoalSummary.rejects}/${shiftGoalSummary.requiredRejects}`}
+              {shiftGoalSummary.requiredCloses > 0 && ` 終了 ${shiftGoalSummary.closes}/${shiftGoalSummary.requiredCloses}`}
+              {shiftGoalSummary.maxIncidents != null && ` 事故 ${shiftGoalSummary.incidents}/${shiftGoalSummary.maxIncidents}`}
+            </p>
+            {shiftGoalSummary.maxActions != null && (
+              <p className="text-stone-300">
+                Shift Clock {shiftGoalSummary.actionsElapsed}/{shiftGoalSummary.maxActions}
+              </p>
+            )}
+          </div>
         )}
       </div>
       <div className="paper-sheet min-w-48 rotate-[0.35deg] border border-[#9f9178] px-4 py-2 text-stone-800 shadow-[4px_4px_0_rgba(0,0,0,0.14)]">

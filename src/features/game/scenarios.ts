@@ -1390,6 +1390,7 @@ export const scenarioDays: ScenarioDay[] = [
     shiftGoal: {
       requiredSuccesses: 4,
       maxIncidents: 1,
+      maxActions: 10,
       clearMessage: '古い行のタイムアウトを待ちながら、新しい通信も安全に通し切った。',
       failureMessage: 'タイムアウト運用の間に事故が増えすぎたか、必要な処理数に届かなかった。',
     },
@@ -1461,6 +1462,7 @@ export const scenarioDays: ScenarioDay[] = [
       requiredSuccesses: 3,
       requiredCloses: 1,
       maxIncidents: 1,
+      maxActions: 8,
       clearMessage: '古い行を手動で閉じ、赤の再利用まで含めて今日の運用を捌き切った。',
       failureMessage: 'クローズ操作か必要処理数を満たす前に、今日の運用を維持できなかった。',
     },
@@ -1533,6 +1535,7 @@ export const scenarioDays: ScenarioDay[] = [
     shiftGoal: {
       requiredRejects: 3,
       maxIncidents: 0,
+      maxActions: 6,
       clearMessage: '空きがない状況で無理に通さず、設備を守り切った。',
       failureMessage: '拒否判断が足りないか、事故を出して設備を守れなかった。',
     },

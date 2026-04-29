@@ -625,12 +625,16 @@ export const getShiftGoalProgress = (day: ScenarioDay, traffic: GameTrafficState
   const requiredRejects = goal?.requiredRejects ?? 0;
   const requiredCloses = goal?.requiredCloses ?? 0;
   const maxIncidents = goal?.maxIncidents ?? null;
+  const maxActions = goal?.maxActions ?? null;
+  const actionsElapsed = traffic.actionClock;
+  const remainingActions = maxActions == null ? null : Math.max(maxActions - actionsElapsed, 0);
   const isComplete =
     goal != null &&
     successes >= requiredSuccesses &&
     rejects >= requiredRejects &&
     closes >= requiredCloses;
   const exceededIncidentLimit = maxIncidents != null && incidents > maxIncidents;
+  const exhaustedActionBudget = maxActions != null && actionsElapsed >= maxActions;
 
   return {
     goal,
@@ -638,19 +642,23 @@ export const getShiftGoalProgress = (day: ScenarioDay, traffic: GameTrafficState
     rejects,
     closes,
     incidents,
+    actionsElapsed,
     requiredSuccesses,
     requiredRejects,
     requiredCloses,
     maxIncidents,
+    maxActions,
+    remainingActions,
     isComplete,
     exceededIncidentLimit,
+    exhaustedActionBudget,
   };
 };
 
 export const deriveDayResolution = (
   day: ScenarioDay,
   traffic: GameTrafficState,
-  reason: 'trafficExhausted' | 'shiftGoalMet' | 'incidentLimitExceeded' = 'trafficExhausted',
+  reason: 'trafficExhausted' | 'shiftGoalMet' | 'incidentLimitExceeded' | 'shiftWindowExpired' = 'trafficExhausted',
 ): DayResolution => {
   const failureObjective = getPendingObjectiveFailure(traffic.objectives);
   const shiftGoalProgress = getShiftGoalProgress(day, traffic);
@@ -681,6 +689,16 @@ export const deriveDayResolution = (
       message:
         shiftGoalProgress.goal.clearMessage ??
         `${day.learningGoal} 成功 ${shiftGoalProgress.successes} / 拒否 ${shiftGoalProgress.rejects} / 終了 ${shiftGoalProgress.closes}`,
+    };
+  }
+
+  if (reason === 'shiftWindowExpired' && shiftGoalProgress.goal && !shiftGoalProgress.isComplete) {
+    return {
+      kind: 'failure',
+      title: `${day.title} 時間切れ`,
+      message:
+        day.shiftGoal?.failureMessage ??
+        `勤務時間内に必要な処理数へ届かず、今日のシフトが終了しました。`,
     };
   }
 

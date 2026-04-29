@@ -289,6 +289,7 @@ export interface ScenarioShiftGoal {
   requiredRejects?: number;
   requiredCloses?: number;
   maxIncidents?: number;
+  maxActions?: number;
   clearMessage?: string;
   failureMessage?: string;
 }

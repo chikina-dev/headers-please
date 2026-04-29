@@ -1123,12 +1123,67 @@ export const selectShiftGoalSummary = createSelector(
       requiredRejects: progress.requiredRejects,
       requiredCloses: progress.requiredCloses,
       maxIncidents: progress.maxIncidents,
+      maxActions: progress.maxActions,
+      actionsElapsed: progress.actionsElapsed,
+      remainingActions: progress.remainingActions,
       successes: progress.successes,
       rejects: progress.rejects,
       closes: progress.closes,
       incidents: progress.incidents,
       isComplete: progress.isComplete,
       exceededIncidentLimit: progress.exceededIncidentLimit,
+      exhaustedActionBudget: progress.exhaustedActionBudget,
+    };
+  },
+);
+
+export const selectResolutionDossier = createSelector(
+  [
+    selectCurrentDay,
+    selectGameTraffic,
+    tableSelectors.selectAll,
+    selectSuspendedWorkbenchPackets,
+    selectShiftGoalSummary,
+    selectTrafficActionResults,
+  ],
+  (day, traffic, tableEntries, suspendedPackets, shiftGoalSummary, actionResults) => {
+    if (!day) {
+      return null;
+    }
+
+    const unresolvedPackets =
+      (traffic.activePacketId ? 1 : 0) + traffic.pendingPacketIds.length + traffic.upcomingPacketIds.length;
+    const backgroundRepliesRemaining = traffic.backgroundFlows.reduce(
+      (total, flow) => total + flow.remainingPackets,
+      0,
+    );
+    const activeLines = tableEntries.filter((entry) => entry.lifecycleState === 'active').length;
+    const waitingLines = tableEntries.filter((entry) => entry.lifecycleState === 'waiting').length;
+    const suspendedCount = Object.keys(suspendedPackets).length;
+    const latestIncident =
+      [...actionResults].reverse().find((result) => result.causedIncident) ?? null;
+
+    return {
+      hasShiftGoal: shiftGoalSummary != null,
+      shiftGoalSummary,
+      unresolvedPackets,
+      pendingPackets: traffic.pendingPacketIds.length,
+      upcomingPackets: traffic.upcomingPacketIds.length,
+      activePacket: traffic.activePacketId ? 1 : 0,
+      suspendedPackets: suspendedCount,
+      openLines: tableEntries.length,
+      activeLines,
+      waitingLines,
+      backgroundRepliesRemaining,
+      latestIncident:
+        latestIncident == null
+          ? null
+          : {
+              outcomeCode: latestIncident.outcomeCode,
+              incidentKind: latestIncident.incidentKind,
+              message: latestIncident.feedbackMessage,
+              subjectLabel: latestIncident.subjectLabel,
+            },
     };
   },
 );

@@ -34,6 +34,7 @@ export function GameRoot() {
         title={viewModel.resolution?.title ?? viewModel.day.title}
         message={viewModel.resolution?.message}
         daySummary={viewModel.dayRuntimeSummary}
+        resolutionDossier={viewModel.resolutionDossier}
         summary={viewModel.campaignSummary}
         unlockSummary={viewModel.resolutionUnlockSummary}
         replayLabel="同じ Day を再試行"
@@ -51,6 +52,7 @@ export function GameRoot() {
         title={viewModel.resolution?.title ?? viewModel.day.title}
         message={viewModel.resolution?.message}
         daySummary={viewModel.dayRuntimeSummary}
+        resolutionDossier={viewModel.resolutionDossier}
         summary={viewModel.campaignSummary}
         unlockSummary={viewModel.resolutionUnlockSummary}
         replayLabel="同じ Day を再試行"

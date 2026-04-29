@@ -10,6 +10,7 @@ export function ResolutionScreen({
   title,
   message,
   daySummary,
+  resolutionDossier,
   summary,
   unlockSummary,
   buttonLabel,
@@ -27,6 +28,40 @@ export function ResolutionScreen({
     incidents: number
     successes: number
   }
+  resolutionDossier?: {
+    hasShiftGoal: boolean
+    shiftGoalSummary: {
+      requiredSuccesses: number
+      requiredRejects: number
+      requiredCloses: number
+      maxIncidents: number | null
+      maxActions: number | null
+      actionsElapsed: number
+      remainingActions: number | null
+      successes: number
+      rejects: number
+      closes: number
+      incidents: number
+      isComplete: boolean
+      exceededIncidentLimit: boolean
+      exhaustedActionBudget: boolean
+    } | null
+    unresolvedPackets: number
+    pendingPackets: number
+    upcomingPackets: number
+    activePacket: number
+    suspendedPackets: number
+    openLines: number
+    activeLines: number
+    waitingLines: number
+    backgroundRepliesRemaining: number
+    latestIncident: {
+      outcomeCode: string
+      incidentKind: string | null
+      message: string
+      subjectLabel: string
+    } | null
+  } | null
   summary?: {
     clearedDays: number
     totalLogs: number
@@ -94,6 +129,59 @@ export function ResolutionScreen({
                   <p className="text-xs uppercase tracking-[0.3em] text-stone-500">Success</p>
                   <p className="mt-2 text-2xl font-black text-stone-100">{daySummary.successes}</p>
                 </div>
+              </div>
+            )}
+            {resolutionDossier && (
+              <div className="mt-6 grid gap-3 text-left sm:grid-cols-2">
+                {resolutionDossier.shiftGoalSummary && (
+                  <div className="border border-[#4c473e] bg-[#181713] px-4 py-4 text-sm text-stone-300">
+                    <p className="text-xs uppercase tracking-[0.3em] text-stone-500">Shift Clock</p>
+                    <p className="mt-2 text-lg font-black text-stone-100">
+                      {resolutionDossier.shiftGoalSummary.actionsElapsed}
+                      {resolutionDossier.shiftGoalSummary.maxActions != null
+                        ? ` / ${resolutionDossier.shiftGoalSummary.maxActions}`
+                        : ''}
+                    </p>
+                    {resolutionDossier.shiftGoalSummary.remainingActions != null && (
+                      <p className="mt-2 text-xs text-stone-400">
+                        残り {resolutionDossier.shiftGoalSummary.remainingActions} 手
+                      </p>
+                    )}
+                  </div>
+                )}
+                <div className="border border-[#4c473e] bg-[#181713] px-4 py-4 text-sm text-stone-300">
+                  <p className="text-xs uppercase tracking-[0.3em] text-stone-500">Backlog</p>
+                  <p className="mt-2 text-lg font-black text-stone-100">{resolutionDossier.unresolvedPackets}</p>
+                  <p className="mt-2 text-xs text-stone-400">
+                    受取口 {resolutionDossier.pendingPackets} / 到着待ち {resolutionDossier.upcomingPackets}
+                    {resolutionDossier.suspendedPackets > 0
+                      ? ` / 棚上げ ${resolutionDossier.suspendedPackets}`
+                      : ''}
+                  </p>
+                </div>
+                <div className="border border-[#4c473e] bg-[#181713] px-4 py-4 text-sm text-stone-300">
+                  <p className="text-xs uppercase tracking-[0.3em] text-stone-500">Open Lines</p>
+                  <p className="mt-2 text-lg font-black text-stone-100">{resolutionDossier.openLines}</p>
+                  <p className="mt-2 text-xs text-stone-400">
+                    Active {resolutionDossier.activeLines} / Waiting {resolutionDossier.waitingLines}
+                  </p>
+                </div>
+                <div className="border border-[#4c473e] bg-[#181713] px-4 py-4 text-sm text-stone-300">
+                  <p className="text-xs uppercase tracking-[0.3em] text-stone-500">Background Replies</p>
+                  <p className="mt-2 text-lg font-black text-stone-100">
+                    {resolutionDossier.backgroundRepliesRemaining}
+                  </p>
+                  <p className="mt-2 text-xs text-stone-400">継続中の通信が次に生む返信数</p>
+                </div>
+                {resolutionDossier.latestIncident && (
+                  <div className="sm:col-span-2 border border-[#4c473e] bg-[#181713] px-4 py-4 text-sm text-stone-300">
+                    <p className="text-xs uppercase tracking-[0.3em] text-stone-500">Latest Incident</p>
+                    <p className="mt-2 text-sm font-black text-red-300">
+                      {resolutionDossier.latestIncident.subjectLabel}
+                    </p>
+                    <p className="mt-2 text-sm text-stone-200">{resolutionDossier.latestIncident.message}</p>
+                  </div>
+                )}
               </div>
             )}
             {!daySummary && summary && (

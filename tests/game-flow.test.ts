@@ -856,4 +856,73 @@ describe('game backend flow', () => {
     expect(state.progress.lastResolution?.kind).toBe('failure');
     expect(state.traffic.pendingPacketIds.length).toBeGreaterThan(0);
   });
+
+  it('fails a late-game shift when the action clock runs out before the quota is met', () => {
+    const baseStore = createTestStore();
+    const baseGameState = baseStore.getState().game;
+    const store = configureStore({
+      reducer: {
+        game: gameReducer,
+      },
+      preloadedState: {
+        game: {
+          ...baseGameState,
+          progress: {
+            ...baseGameState.progress,
+            screen: 'inspection',
+            currentDayId: 'day-22',
+            nextDayId: null,
+            unlockedDayIds: ['day-22'],
+          },
+        },
+      },
+    });
+
+    const day = scenarioDayMap['day-22'];
+    const patientPacket = createRuntimePacketRecord(
+      {
+        ...day.packets[0]!,
+        runtime: {
+          ...day.packets[0]!.runtime,
+          waitBudgetActions: 99,
+        },
+      },
+      0,
+      'scenario',
+      0,
+    );
+
+    store.dispatch(
+      gameTrafficActions.startDaySession({
+        dayId: day.id,
+        runId: 'run-day-22-shift-window',
+        sessionStatus: 'active',
+        packets: [patientPacket],
+        packetOrder: [patientPacket.runtimeId],
+        activePacketId: null,
+        upcomingPacketIds: [],
+        pendingPacketIds: [patientPacket.runtimeId],
+        resolvedPacketIds: [],
+        backgroundFlows: [],
+        actionClock: 0,
+        actionResults: [],
+        objectives: [],
+        nextActionSequence: 1,
+        nextRuntimeOrdinal: 1,
+        daySeed: 91,
+        rngSeed: 91,
+      }),
+    );
+
+    for (let index = 0; index < 6; index += 1) {
+      store.dispatch(waitOneTurn());
+    }
+
+    const state = store.getState().game;
+
+    expect(state.progress.screen).toBe('campaignComplete');
+    expect(state.progress.lastResolution?.kind).toBe('failure');
+    expect(state.progress.lastResolution?.title).toContain('時間切れ');
+    expect(state.traffic.actionClock).toBe(6);
+  });
 });

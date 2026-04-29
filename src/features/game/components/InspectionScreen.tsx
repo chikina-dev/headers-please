@@ -230,12 +230,16 @@ export function InspectionScreen({
     requiredRejects: number
     requiredCloses: number
     maxIncidents: number | null
+    maxActions: number | null
+    actionsElapsed: number
+    remainingActions: number | null
     successes: number
     rejects: number
     closes: number
     incidents: number
     isComplete: boolean
     exceededIncidentLimit: boolean
+    exhaustedActionBudget: boolean
   } | null
   stampOptions: StampOption[]
   routeSlipTargets: Array<{
