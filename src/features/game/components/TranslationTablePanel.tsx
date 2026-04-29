@@ -48,7 +48,6 @@ export function TranslationTablePanel(props: {
   onSetExternalPortFilter: (value: 'all' | StampId) => void
   onSetDestinationHostFilter: (value: string) => void
   onChooseRow: (rowId: string) => void
-  onApplySelectedRow: () => void
   onCloseSelectedRow: () => void
 }) {
   const {
@@ -63,7 +62,6 @@ export function TranslationTablePanel(props: {
     selectedEntrySummary,
     isReadOnly,
     onChooseRow,
-    onApplySelectedRow,
     onCloseSelectedRow,
   } = props
   const selectedRow = rows.find((row) => row.id === selectedEntryId) ?? null
@@ -79,7 +77,6 @@ export function TranslationTablePanel(props: {
           : matchingEntryIds.length === 1
             ? '候補 1件'
             : `候補 ${matchingEntryIds.length}件`
-  const needsApply = packetDirection === 'wanToLan' && !!draftEntrySummary && !selectedEntrySummary
 
   return (
     <div className="relative min-h-0 flex-1 pt-2">
@@ -204,23 +201,6 @@ export function TranslationTablePanel(props: {
           </tbody>
         </table>
       </div>
-
-      {needsApply && selectedRow && (
-        <div className="pointer-events-none absolute bottom-6 right-[-0.85rem] z-10 rotate-[1.2deg] slip-swing-in">
-          <div className="paper-sheet pointer-events-auto w-36 border border-[#9f9178] px-3 py-3 text-stone-800 shadow-[8px_8px_0_rgba(0,0,0,0.18)]">
-            <p className="text-[10px] uppercase tracking-[0.24em] text-stone-500">Apply Row</p>
-            <p className="mt-2 text-xs font-bold tracking-[0.08em]">{draftEntrySummary?.label}</p>
-            <PrimaryButton
-              tone="cyan"
-              className="mt-3 w-full px-3 py-2 text-[11px]"
-              onClick={onApplySelectedRow}
-              disabled={isReadOnly}
-            >
-              DSTへ適用
-            </PrimaryButton>
-          </div>
-        </div>
-      )}
 
       {tableFeatureFlags.allowsManualClose && selectedRow && (
         <div className="pointer-events-none absolute bottom-6 right-[-0.85rem] z-10 rotate-[1.2deg] slip-swing-in">

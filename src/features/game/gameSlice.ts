@@ -22,6 +22,7 @@ import {
   createEmptyActionContext,
   createActionResultRecord,
   createBackgroundFlowPacketRecord,
+  createRegisteredEntryBackgroundFlow,
   createGeneratedResponsePacketRecord,
   createGeneratedScenarioResponsePacketRecord,
   createPlayerCommandRecord,
@@ -1172,6 +1173,38 @@ export const submitVerdict =
           }),
         ),
       );
+
+      const registeredEntryFlow = createRegisteredEntryBackgroundFlow(
+        day,
+        evaluation.createdTableEntry,
+        packet,
+        getState().game.traffic.actionClock,
+      );
+
+      if (registeredEntryFlow) {
+        dispatch(
+          gameTrafficActions.replaceBackgroundFlows([
+            ...getState().game.traffic.backgroundFlows,
+            registeredEntryFlow,
+          ]),
+        );
+        dispatch(
+          gameTrafficActions.appendSessionEvent(
+            createSessionEventRecord(getState().game.traffic, {
+              kind: 'backgroundPacketQueued',
+              packetRuntimeId: packet.runtimeId,
+              relatedEntryId: evaluation.createdTableEntry.id,
+              actionResultId: actionResult.id,
+              message: `${evaluation.createdTableEntry.id} は開いたまま継続返信を生む通信行になりました。`,
+              metadata: buildSessionEventMetadata([
+                ['spawnSource', 'registeredEntryFlow'],
+                ['nextArrivalAction', registeredEntryFlow.nextArrivalAction],
+                ['remainingPackets', registeredEntryFlow.remainingPackets],
+              ]),
+            }),
+          ),
+        );
+      }
     } else if (evaluation.activatedEntryId) {
       dispatch(gameTableActions.activateTableEntry(evaluation.activatedEntryId));
       preservedEntryIds.push(evaluation.activatedEntryId);
@@ -1669,6 +1702,14 @@ export const chooseStamp =
       },
     });
     dispatch(gameWorkspaceActions.chooseStamp(stampId));
+    appendCommand(getState, dispatch, {
+      kind: 'applyStamp',
+      packetRuntimeId: getActiveRuntimePacket(getState().game.traffic)?.runtimeId ?? null,
+      payload: {
+        stampId,
+      },
+    });
+    dispatch(gameWorkspaceActions.applyStampSelection());
   };
 
 export const pullPacketToWorkbench =
@@ -1783,6 +1824,35 @@ export const chooseRouteTarget =
     });
     if (nextRouteTargetId) {
       dispatch(gameWorkspaceActions.chooseRouteTarget(nextRouteTargetId));
+      const packet = getActiveRuntimePacket(getState().game.traffic);
+
+      if (!packet || !isWorkbenchFocusedOnPacket(getState(), packet.runtimeId)) {
+        return;
+      }
+
+      const routeTarget =
+        packet.routeTargets?.find((candidate) => {
+          const candidateId = candidate.port ? `${candidate.host}:${candidate.port}` : candidate.host;
+          return candidateId === nextRouteTargetId;
+        }) ?? null;
+
+      if (!routeTarget) {
+        return;
+      }
+
+      appendCommand(getState, dispatch, {
+        kind: 'applyRouteTarget',
+        packetRuntimeId: packet.runtimeId,
+        payload: {
+          routeTargetId: nextRouteTargetId,
+        },
+      });
+      dispatch(
+        gameWorkspaceActions.applyRouteTargetSelection({
+          routeTargetId: nextRouteTargetId,
+          destination: routeTarget,
+        }),
+      );
       return;
     }
 
@@ -1886,6 +1956,29 @@ export const chooseTableEntry =
     });
     if (nextEntryId) {
       dispatch(gameWorkspaceActions.chooseTableEntry(nextEntryId));
+      const packet = getActiveRuntimePacket(getState().game.traffic);
+      const selectedEntry = getState().game.table.entities[nextEntryId] ?? null;
+
+      if (!selectedEntry || !isWorkbenchFocusedOnPacket(getState(), packet?.runtimeId ?? null)) {
+        return;
+      }
+
+      appendCommand(getState, dispatch, {
+        kind: 'applyTableEntry',
+        packetRuntimeId: getActiveRuntimePacket(getState().game.traffic)?.runtimeId ?? null,
+        payload: {
+          entryId: nextEntryId,
+        },
+      });
+      dispatch(
+        gameWorkspaceActions.applyTableEntrySelection({
+          entryId: nextEntryId,
+          destination: {
+            host: selectedEntry.internalHost,
+            ...(selectedEntry.internalPort ? { port: selectedEntry.internalPort } : {}),
+          },
+        }),
+      );
       return;
     }
 

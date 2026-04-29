@@ -126,8 +126,10 @@ export const STAMP_DEFINITIONS: Record<StampId, StampDefinition> = {
   },
 };
 
-const ALL_STAMP_IDS = Object.keys(STAMP_DEFINITIONS) as StampId[];
-export const PORT_STAMP_IDS = ALL_STAMP_IDS.filter((stampId) => stampId !== 'home') as Exclude<StampId, 'home'>[];
+const ALL_STAMP_IDS = (Object.keys(STAMP_DEFINITIONS) as StampId[]).filter(
+  (stampId) => stampId !== 'home',
+) as Exclude<StampId, 'home'>[];
+export const PORT_STAMP_IDS = ALL_STAMP_IDS;
 
 const endpoint = (host: string, port?: string): Endpoint => ({ host, port });
 
@@ -233,15 +235,15 @@ export const scenarioDays: ScenarioDay[] = [
     id: 'day-1',
     unit: 1,
     dayNumber: 1,
-    phaseId: 'directRouting',
-    title: 'DAY 1: 送る / 戻す',
-    summary: 'まずは個包を受け取り、宛先札を当てて左右へ流す基本操作を覚える。',
-    learningGoal: '個包は受取口から机へ出し、宛先を決めてから送る。',
-    availableStamps: [],
+    phaseId: 'natBasics',
+    title: 'DAY 1: NATの入口',
+    summary: '最初の送信では、家の中の送信元を「自宅」に書き換えて外へ出す。',
+    learningGoal: '送信時は SRC を自宅へ書き換え、返信時は自宅を内側端末へ戻す。',
+    availableStamps: ['home'],
     availableVerdicts: ['ACCEPT'],
     rules: {
-      columns: [],
-      inboundLookupKeys: [],
+      columns: ['externalHost', 'internalHost'],
+      inboundLookupKeys: ['externalHost'],
     },
     runtime: {
       ordering: 'grouped',
@@ -257,17 +259,15 @@ export const scenarioDays: ScenarioDay[] = [
           'lanToWan',
           endpoint('PC-A'),
           endpoint('Server-1'),
-          'Server-1 の札を個包に重ねて、右へ通す。',
-          { verdict: 'ACCEPT', flow: 'outbound' },
+          'PC-A の送信元を「自宅」に書き換えて、右へ通す。',
+          { verdict: 'ACCEPT', flow: 'outbound', requiredStampId: 'home' },
           undefined,
           undefined,
           undefined,
           repeatGroup('day-1-main', 1, 1),
         ),
-        routeTargets: [endpoint('Server-1'), endpoint('Server-2')],
         responsePlan: {
-          prompt: 'PC-A の札を個包に重ねて、左へ戻す。',
-          routeTargets: [endpoint('PC-A'), endpoint('PC-B')],
+          prompt: '右から返ってきた自宅宛ての返信を、テーブルを見て PC-A に戻す。',
           queuePosition: 'front',
         },
       },
@@ -301,7 +301,7 @@ export const scenarioDays: ScenarioDay[] = [
           'lanToWan',
           endpoint('PC-A'),
           endpoint('Server-1'),
-          'PC-A の送信元を「自宅」に書き換えて外へ通す。',
+          'PC-A の送信元を「自宅」に書き換えて外へ通す。今日はその戻し先が曖昧になる瞬間を観測する。',
           { verdict: 'ACCEPT', flow: 'outbound', requiredStampId: 'home' },
         ),
         responsePlan: {
@@ -320,7 +320,7 @@ export const scenarioDays: ScenarioDay[] = [
         'lanToWan',
         endpoint('PC-B'),
         endpoint('Server-1'),
-        'PC-B も同じく「自宅」として外へ出す。',
+        'PC-B も「自宅」として続けて外へ通す。',
         { verdict: 'ACCEPT', flow: 'outbound', requiredStampId: 'home' },
       ),
     ],
@@ -443,7 +443,7 @@ export const scenarioDays: ScenarioDay[] = [
     },
     runtime: {
       ordering: 'mixed',
-      repeatForcedFailureUntilIncident: true,
+      repeatForcedFailureUntilIncident: false,
       varianceMode: 'steady',
     },
     packets: [

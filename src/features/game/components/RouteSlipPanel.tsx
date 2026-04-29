@@ -17,7 +17,6 @@ export function RouteSlipPanel({
   isReadOnly,
   dragPayloadType,
   onChooseRow,
-  onApplySelectedRow,
 }: {
   title: string
   subtitle: string
@@ -26,7 +25,6 @@ export function RouteSlipPanel({
   isReadOnly: boolean
   dragPayloadType: 'table-entry' | 'route-slip'
   onChooseRow: (rowId: string) => void
-  onApplySelectedRow: () => void
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 pt-2">
@@ -66,7 +64,6 @@ export function RouteSlipPanel({
                   return
                 }
                 onChooseRow(row.id)
-                onApplySelectedRow()
               }}
               className={`paper-sheet border px-4 py-4 text-left shadow-[4px_4px_0_rgba(0,0,0,0.12)] transition ${
                 row.isSelected

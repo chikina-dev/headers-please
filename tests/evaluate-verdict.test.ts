@@ -49,7 +49,7 @@ const toGeneratedResponsePacket = (dayId: string, packetIndex: number): RuntimeP
 };
 
 describe('evaluateVerdict', () => {
-  it('returns direct-routing traffic when accepted without an applied route slip', () => {
+  it('returns first-day outbound traffic when accepted without rewriting SRC to home', () => {
     const day = scenarioDayMap['day-1'];
     const packet = toRuntimePacket('day-1', 0);
 
@@ -68,11 +68,11 @@ describe('evaluateVerdict', () => {
       rngSeed: 1,
     });
 
-    expect(result.outcomeCode).toBe('returnedForRoute');
+    expect(result.outcomeCode).toBe('returnedForRewrite');
     expect(result.advancesPacket).toBe(false);
   });
 
-  it('accepts direct-routing traffic when the route slip was applied to the paper', () => {
+  it('accepts first-day outbound traffic when SRC was rewritten to home', () => {
     const day = scenarioDayMap['day-1'];
     const packet = toRuntimePacket('day-1', 0);
 
@@ -80,10 +80,10 @@ describe('evaluateVerdict', () => {
       day,
       packet,
       verdict: 'ACCEPT',
-      selectedStampId: null,
+      selectedStampId: 'home',
       selectedTableEntry: null,
-      documentSource: packet.packet.source,
-      documentSourceApplied: false,
+      documentSource: { host: HOME_LABEL },
+      documentSourceApplied: true,
       documentDestination: packet.packet.destination,
       documentDestinationApplied: true,
       tableEntries: [],
@@ -91,7 +91,7 @@ describe('evaluateVerdict', () => {
       rngSeed: 1,
     });
 
-    expect(result.outcomeCode).toBe('forwardedDirectRoute');
+    expect(result.outcomeCode).toBe('registeredMapping');
     expect(result.advancesPacket).toBe(true);
   });
 

@@ -86,12 +86,9 @@ export function PacketPanel({
   onPullPacketToWorkbench,
   onShelveWorkbenchPacket,
   onWaitOneTurn,
-  onApplyRouteTargetSelection,
-  onApplyStampSelection,
   onDropStampSelection,
   onSetDispatchIntent,
   onCommitWorkbenchDispatch,
-  onApplyTableEntrySelection,
 }: {
   packet: PacketPresentation | null
   incomingPacket: {
@@ -166,12 +163,9 @@ export function PacketPanel({
   onPullPacketToWorkbench: (packetRuntimeId?: string) => void
   onShelveWorkbenchPacket: () => void
   onWaitOneTurn: () => void
-  onApplyRouteTargetSelection: () => void
-  onApplyStampSelection: () => void
   onDropStampSelection: () => void
   onSetDispatchIntent: (intent: 'ACCEPT' | 'REJECT') => void
   onCommitWorkbenchDispatch: () => void
-  onApplyTableEntrySelection: () => void
 }) {
   const [draggedStampId, setDraggedStampId] = useState<StampId | null>(null)
   const [dragSource, setDragSource] = useState<'tray' | 'paper' | null>(null)
@@ -187,7 +181,8 @@ export function PacketPanel({
       : null
   const selectedStamp = stampOptions.find((option) => option.isSelected) ?? null
   const canReject = availableVerdicts.includes('REJECT')
-  const trayStampOptions = stampOptions.filter((option) => !option.isSelected)
+  const homeStampOption = stampOptions.find((option) => option.id === 'home') ?? null
+  const trayStampOptions = stampOptions.filter((option) => option.id !== 'home' && !option.isSelected)
   const lanInboxPackets = incomingPackets.filter((candidate) => candidate.direction === 'lanToWan')
   const wanInboxPackets = incomingPackets.filter((candidate) => candidate.direction === 'wanToLan')
   const inboxPacketCount = incomingPackets.length
@@ -219,41 +214,28 @@ export function PacketPanel({
         ? stagedIntentLabel
           ? `${stagedIntentLabel} を準備中`
           : '送る向きを決めてから提出'
-        : draftRouteTargetSummary
-          ? `${draftRouteTargetSummary.label} を選択中。DSTへ適用する`
-          : '宛先札を DST に重ねる'
+        : '宛先札を DST に重ねる'
       : packet?.direction === 'lanToWan'
       ? sourceRewriteValue
         ? stagedIntentLabel
           ? `${stagedIntentLabel} を準備中`
           : '送る向きを決めてから提出'
-        : draftStampSummary
-          ? `${draftStampSummary.label} を選択中。SRCへ適用する`
-          : 'スタンプで SRC を書き換える'
+        : 'スタンプで SRC を書き換える'
       : destinationRewriteValue
         ? stagedIntentLabel
           ? `${stagedIntentLabel} を準備中`
           : '戻す向きを決めてから提出'
-        : draftEntrySummary
-          ? `${draftEntrySummary.label} を選択中。DSTへ適用する`
-          : matchingEntryIds.length === 0
-          ? '一致する行がありません'
-          : matchingEntryIds.length === 1
-            ? '候補 1件。戻し先を選ぶ'
-            : `候補 ${matchingEntryIds.length}件。1行選ぶ`
+        : matchingEntryIds.length === 0
+        ? '一致する行がありません'
+        : matchingEntryIds.length === 1
+          ? '候補 1件。戻し先を選ぶ'
+          : `候補 ${matchingEntryIds.length}件。1行選ぶ`
   const verdictStampLabel =
     returnedToDesk
       ? 'RETURN'
       : latestPacketVerdict?.action === 'ACCEPT'
         ? 'PASS'
         : 'BLOCK'
-  const needsStampApply = packet?.direction === 'lanToWan' && draftStampSummary !== null && sourceRewriteValue === null
-  const needsRouteApply = usesDirectRouteSlips && draftRouteTargetSummary !== null && destinationRewriteValue === null
-  const needsTableApply =
-    !usesDirectRouteSlips &&
-    packet?.direction === 'wanToLan' &&
-    draftEntrySummary !== null &&
-    destinationRewriteValue === null
   const canDragPacket =
     !isReadOnly &&
     packet != null &&
@@ -261,6 +243,13 @@ export function PacketPanel({
     ((usesDirectRouteSlips && destinationRewriteValue !== null) ||
       (packet.direction === 'lanToWan' && sourceRewriteValue !== null) ||
       (packet.direction === 'wanToLan' && destinationRewriteValue !== null))
+
+  const handleHomeRewrite = () => {
+    if (isReadOnly || !homeStampOption) {
+      return
+    }
+    onChooseStamp('home')
+  }
 
   const handleTrayDragStart = (stampId: StampId) => {
     setDraggedStampId(stampId)
@@ -310,7 +299,7 @@ export function PacketPanel({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pr-1 pb-6">
       <div className="flex items-center justify-between gap-3 px-1 pb-1">
         <div>
           <h2 className="text-lg font-bold tracking-[0.06em] text-stone-100">{packet?.directionLabel ?? '待機中'}</h2>
@@ -643,7 +632,6 @@ export function PacketPanel({
                           return
                         }
                         onChooseRouteTarget(routeTargetId)
-                        onApplyRouteTargetSelection()
                         return
                       }
                       if (packet?.direction !== 'wanToLan') {
@@ -652,7 +640,6 @@ export function PacketPanel({
                       const entryId = event.dataTransfer.getData('application/x-headers-please-table-entry')
                       if (entryId) {
                         onChooseTableEntry(entryId)
-                        onApplyTableEntrySelection()
                       }
                     }}
                     className="min-h-16 border border-stone-300 bg-stone-50/45 px-3 py-2"
@@ -848,34 +835,14 @@ export function PacketPanel({
                 </div>
               ))}
             </div>
-            {needsStampApply && (
+            {homeStampOption && packet?.direction === 'lanToWan' && sourceRewriteValue == null && (
               <PrimaryButton
                 tone="cyan"
                 className="mt-3 w-full px-3 py-2 text-[11px]"
-                onClick={onApplyStampSelection}
+                onClick={handleHomeRewrite}
                 disabled={isReadOnly}
               >
-                SRCへ適用
-              </PrimaryButton>
-            )}
-            {needsRouteApply && (
-              <PrimaryButton
-                tone="cyan"
-                className="mt-3 w-full px-3 py-2 text-[11px]"
-                onClick={onApplyRouteTargetSelection}
-                disabled={isReadOnly}
-              >
-                DSTへ適用
-              </PrimaryButton>
-            )}
-            {needsTableApply && (
-              <PrimaryButton
-                tone="cyan"
-                className="mt-3 w-full px-3 py-2 text-[11px]"
-                onClick={onApplyTableEntrySelection}
-                disabled={isReadOnly}
-              >
-                DSTへ適用
+                自宅へ書き換え
               </PrimaryButton>
             )}
             {usesDirectRouteSlips && appliedRouteTargetSummary && (
@@ -908,10 +875,10 @@ export function PacketPanel({
               }}
               className="mt-3 rounded-sm border border-dashed border-[#5a5144] bg-[#171510] px-2 py-2"
             >
-            {stampOptions.length === 0 ? (
+            {trayStampOptions.length === 0 ? (
               <div className="mt-3 flex items-center gap-2 text-sm text-stone-500">
                 <ShieldAlert className="h-4 w-4" />
-                未解禁
+                {homeStampOption ? '色スタンプなし' : '未解禁'}
               </div>
             ) : (
               <div className="grid max-h-[20rem] gap-2 overflow-auto pr-1">
@@ -921,25 +888,23 @@ export function PacketPanel({
                     draggable={!isReadOnly}
                     onDragStart={() => handleTrayDragStart(option.id)}
                     onDragEnd={clearDragState}
-                    onDoubleClick={() => onChooseStamp(option.id)}
-                    className={`cursor-grab transition ${
-                      option.isUnavailable
-                        ? 'border-[#7b5a2f] bg-[#2b1d12] text-amber-100'
-                        : option.isInUse
-                          ? `${option.buttonClassName} opacity-70`
-                          : option.buttonClassName
+                    onClick={() => {
+                      if (!isReadOnly) {
+                        onChooseStamp(option.id)
+                      }
+                    }}
+                    className={`cursor-grab rounded-b-sm border border-[#5a4630] bg-transparent transition ${
+                      option.isUnavailable ? 'opacity-70' : ''
                     }`}
                   >
                     <div className="rounded-t-full border border-[#5a4630] bg-[linear-gradient(180deg,#7b6243,#54412d)] px-3 py-1 text-center text-[10px] font-black uppercase tracking-[0.22em] text-stone-100 shadow-[0_2px_0_rgba(255,255,255,0.08)_inset]">
                       <Stamp className="mx-auto h-4 w-4" />
                     </div>
                     <div
-                      className={`flex items-center justify-center gap-2 border-x border-b-2 px-3 py-2 text-xs font-bold uppercase tracking-[0.14em] ${
+                      className={`flex items-center justify-center gap-2 rounded-b-sm border-x border-b-2 px-3 py-2 text-xs font-bold uppercase tracking-[0.14em] ${
                         option.isUnavailable
                           ? 'border-[#7b5a2f] bg-[#2b1d12] text-amber-100'
-                          : option.isInUse
-                            ? `${option.buttonClassName} opacity-70`
-                            : option.buttonClassName
+                          : option.buttonClassName
                       }`}
                     >
                       <span>{option.label}</span>

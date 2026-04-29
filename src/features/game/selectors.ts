@@ -537,17 +537,26 @@ export const selectWorkbenchStatus = createSelector(
 
     if (day?.phaseId === 'directRouting') {
       const routedDestination = packetRewritePreview.destination;
+      const canCommitReject = Boolean(
+        placement === 'workbench' && isWorkbenchBoundToCurrentPacket && dispatchIntent === 'REJECT',
+      );
+      const canCommitAccept = Boolean(
+        placement === 'workbench' &&
+          isWorkbenchBoundToCurrentPacket &&
+          dispatchIntent === 'ACCEPT' &&
+          appliedRouteTargetId &&
+          routedDestination,
+      );
 
       return {
-        canCommit: Boolean(
-          placement === 'workbench' &&
-            isWorkbenchBoundToCurrentPacket &&
-            dispatchIntent &&
-            appliedRouteTargetId &&
-            routedDestination,
-        ),
+        canCommit: canCommitReject || canCommitAccept,
         dispatchIntent,
-        routeSummary: routedDestination ? `${formatEndpoint(packet.packet.source)} -> ${routedDestination}` : null,
+        routeSummary:
+          dispatchIntent === 'REJECT'
+            ? `${formatEndpoint(packet.packet.source)} を止める`
+            : routedDestination
+              ? `${formatEndpoint(packet.packet.source)} -> ${routedDestination}`
+              : null,
         steps: [
           {
             id: 'pick',
@@ -556,8 +565,18 @@ export const selectWorkbenchStatus = createSelector(
           },
           {
             id: 'route',
-            label: routedDestination ? `DST ${routedDestination}` : 'DST 適用待ち',
-            status: routedDestination ? ('ready' as const) : ('pending' as const),
+            label:
+              dispatchIntent === 'REJECT'
+                ? '拒否時は宛先札不要'
+                : routedDestination
+                  ? `DST ${routedDestination}`
+                  : 'DST 未設定',
+            status:
+              dispatchIntent === 'REJECT'
+                ? ('ready' as const)
+                : routedDestination
+                  ? ('ready' as const)
+                  : ('pending' as const),
           },
           {
             id: 'dispatch',
@@ -579,11 +598,25 @@ export const selectWorkbenchStatus = createSelector(
       const rewrittenSource = packetRewritePreview.source;
       const selectedSource =
         draftStampId ? `${HOME_LABEL}:${STAMP_DEFINITIONS[draftStampId].label}` : null;
+      const canCommitReject = Boolean(
+        placement === 'workbench' && isWorkbenchBoundToCurrentPacket && dispatchIntent === 'REJECT',
+      );
+      const canCommitAccept = Boolean(
+        placement === 'workbench' &&
+          isWorkbenchBoundToCurrentPacket &&
+          dispatchIntent === 'ACCEPT' &&
+          rewrittenSource,
+      );
 
       return {
-        canCommit: Boolean(placement === 'workbench' && isWorkbenchBoundToCurrentPacket && dispatchIntent && rewrittenSource),
+        canCommit: canCommitReject || canCommitAccept,
         dispatchIntent,
-        routeSummary: rewrittenSource ? `${rewrittenSource} -> ${formatEndpoint(packet.packet.destination)}` : null,
+        routeSummary:
+          dispatchIntent === 'REJECT'
+            ? `${formatEndpoint(packet.packet.destination)} への送信を止める`
+            : rewrittenSource
+              ? `${rewrittenSource} -> ${formatEndpoint(packet.packet.destination)}`
+              : null,
         steps: [
           {
             id: 'pick',
@@ -592,8 +625,18 @@ export const selectWorkbenchStatus = createSelector(
           },
           {
             id: 'rewrite',
-            label: rewrittenSource ? `SRC ${rewrittenSource}` : 'SRC 書き換え待ち',
-            status: rewrittenSource ? ('ready' as const) : ('pending' as const),
+            label:
+              dispatchIntent === 'REJECT'
+                ? '拒否時は書き換え不要'
+                : rewrittenSource
+                  ? `SRC ${rewrittenSource}`
+                  : 'SRC 未書き換え',
+            status:
+              dispatchIntent === 'REJECT'
+                ? ('ready' as const)
+                : rewrittenSource
+                  ? ('ready' as const)
+                  : ('pending' as const),
           },
           {
             id: 'dispatch',
@@ -609,10 +652,25 @@ export const selectWorkbenchStatus = createSelector(
       };
     }
 
+    const canCommitReject = Boolean(
+      placement === 'workbench' && isWorkbenchBoundToCurrentPacket && dispatchIntent === 'REJECT',
+    );
+    const canCommitAccept = Boolean(
+      placement === 'workbench' &&
+        isWorkbenchBoundToCurrentPacket &&
+        dispatchIntent === 'ACCEPT' &&
+        selectedEntrySummary,
+    );
+
     return {
-      canCommit: Boolean(placement === 'workbench' && isWorkbenchBoundToCurrentPacket && dispatchIntent && selectedEntrySummary),
+      canCommit: canCommitReject || canCommitAccept,
       dispatchIntent,
-      routeSummary: selectedEntrySummary ? `${formatEndpoint(packet.packet.source)} -> ${selectedEntrySummary.label}` : null,
+      routeSummary:
+        dispatchIntent === 'REJECT'
+          ? `${formatEndpoint(packet.packet.source)} を内側へ戻さない`
+          : selectedEntrySummary
+            ? `${formatEndpoint(packet.packet.source)} -> ${selectedEntrySummary.label}`
+            : null,
       steps: [
         {
           id: 'pick',
@@ -629,10 +687,17 @@ export const selectWorkbenchStatus = createSelector(
         {
           id: 'lookup',
           label:
-            selectedEntrySummary
-              ? `DST ${selectedEntrySummary.label}`
-              : 'DST 復元待ち',
-          status: selectedEntrySummary ? ('ready' as const) : ('pending' as const),
+            dispatchIntent === 'REJECT'
+              ? '拒否時は戻し先不要'
+              : selectedEntrySummary
+                ? `DST ${selectedEntrySummary.label}`
+                : 'DST 未復元',
+          status:
+            dispatchIntent === 'REJECT'
+              ? ('ready' as const)
+              : selectedEntrySummary
+                ? ('ready' as const)
+                : ('pending' as const),
         },
         {
           id: 'dispatch',

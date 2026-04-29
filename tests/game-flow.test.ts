@@ -218,29 +218,22 @@ describe('game backend flow', () => {
     expect(state.progress.nextDayId).toBe('day-2');
   });
 
-  it('treats workbench rewrites as applied document state instead of immediate selection', () => {
+  it('applies rewrites to the workbench document as soon as a stamp or row is chosen', () => {
     const store = createTestStore();
 
     store.dispatch(startCampaign());
     store.dispatch(pullPacketToWorkbench());
 
     let state = getGameState(store);
-    expect(state.workspace.document.destination?.host).toBe('Server-1');
-    expect(state.workspace.document.destinationApplied).toBe(false);
+    expect(state.workspace.document.source?.host).toBe('PC-A');
+    expect(state.workspace.document.sourceApplied).toBe(false);
 
-    store.dispatch(chooseRouteTarget('Server-1'));
+    store.dispatch(chooseStamp('home'));
     state = getGameState(store);
 
-    expect(state.workspace.document.destination?.host).toBe('Server-1');
-    expect(state.workspace.draft.appliedRouteTargetId).toBe(null);
-    expect(state.workspace.document.destinationApplied).toBe(false);
-
-    store.dispatch(applyRouteTargetSelection());
-    state = getGameState(store);
-
-    expect(state.workspace.document.destination?.host).toBe('Server-1');
-    expect(state.workspace.draft.appliedRouteTargetId).toBe('Server-1');
-    expect(state.workspace.document.destinationApplied).toBe(true);
+    expect(state.workspace.document.source?.host).toBe('自宅');
+    expect(state.workspace.draft.appliedStampId).toBe('home');
+    expect(state.workspace.document.sourceApplied).toBe(true);
 
     store.dispatch(submitVerdict('ACCEPT'));
     state = getGameState(store);
@@ -255,15 +248,12 @@ describe('game backend flow', () => {
 
     expect(inboundPacket?.packet.direction).toBe('wanToLan');
     expect(state.workspace.document.placement).toBe('workbench');
-    expect(state.workspace.document.destination?.host).toBe('PC-A');
+    expect(state.workspace.document.destination?.host).toBe('自宅');
     expect(state.workspace.document.destinationApplied).toBe(false);
 
-    store.dispatch(chooseRouteTarget('PC-A'));
-    state = getGameState(store);
-    expect(state.workspace.document.destination?.host).toBe('PC-A');
-    expect(state.workspace.document.destinationApplied).toBe(false);
-
-    store.dispatch(applyRouteTargetSelection());
+    if (typeof state.table.ids[0] === 'string') {
+      store.dispatch(chooseTableEntry(state.table.ids[0]));
+    }
     state = getGameState(store);
 
     expect(state.workspace.document.destination?.host).toBe('PC-A');
@@ -275,8 +265,8 @@ describe('game backend flow', () => {
 
     store.dispatch(startCampaign());
     store.dispatch(pullPacketToWorkbench());
-    store.dispatch(chooseRouteTarget('Server-1'));
-    store.dispatch(applyRouteTargetSelection());
+    store.dispatch(chooseStamp('home'));
+    store.dispatch(applyStampSelection());
     store.dispatch(submitVerdict('REJECT'));
 
     const state = getGameState(store);
@@ -291,13 +281,15 @@ describe('game backend flow', () => {
 
     store.dispatch(startCampaign());
     store.dispatch(pullPacketToWorkbench());
-    store.dispatch(chooseRouteTarget('Server-1'));
-    store.dispatch(applyRouteTargetSelection());
+    store.dispatch(chooseStamp('home'));
+    store.dispatch(applyStampSelection());
     store.dispatch(submitVerdict('ACCEPT'));
 
     store.dispatch(pullPacketToWorkbench());
-    store.dispatch(chooseRouteTarget('PC-A'));
-    store.dispatch(applyRouteTargetSelection());
+    if (typeof getGameState(store).table.ids[0] === 'string') {
+      store.dispatch(chooseTableEntry(getGameState(store).table.ids[0] as string));
+      store.dispatch(applyTableEntrySelection());
+    }
     store.dispatch(submitVerdict('ACCEPT'));
 
     let state = getGameState(store);
@@ -430,7 +422,7 @@ describe('game backend flow', () => {
     const latestAction = state.traffic.actionResults.at(-1);
     const timeoutEvent = state.traffic.sessionEvents.find((event) => event.kind === 'mappingTimedOut');
 
-    expect(latestAction?.outcomeCode).toBe('returnedForRoute');
+    expect(latestAction?.outcomeCode).toBe('returnedForRewrite');
     expect(state.table.ids).not.toContain('entry-timeout-on-return');
     expect(timeoutEvent?.relatedEntryId).toBe('entry-timeout-on-return');
     expect(latestAction?.context.expiredEntryIds).toContain('entry-timeout-on-return');
@@ -585,6 +577,81 @@ describe('game backend flow', () => {
 
     expect(state.table.entities[blueEntry!.id]).toBeUndefined();
     expect(state.traffic.sessionEvents.some((event) => event.kind === 'mappingTimedOut' && event.relatedEntryId === blueEntry!.id)).toBe(true);
+  });
+
+  it('turns a newly accepted late-game line into recurring background work', () => {
+    const baseStore = createTestStore();
+    const baseGameState = baseStore.getState().game;
+    const store = configureStore({
+      reducer: {
+        game: gameReducer,
+      },
+      preloadedState: {
+        game: {
+          ...baseGameState,
+          progress: {
+            ...baseGameState.progress,
+            screen: 'inspection',
+            currentDayId: 'day-20',
+            nextDayId: null,
+            unlockedDayIds: ['day-20'],
+          },
+        },
+      },
+    });
+
+    const day = scenarioDayMap['day-20'];
+    const packet = createRuntimePacketRecord(
+      {
+        ...day.packets[0]!,
+        runtime: {
+          ...day.packets[0]!.runtime,
+          waitBudgetActions: 99,
+        },
+      },
+      0,
+      'scenario',
+      0,
+    );
+    const session = {
+      dayId: day.id,
+      runId: 'run-recurring-line',
+      sessionStatus: 'active' as const,
+      packets: [packet],
+      packetOrder: [packet.runtimeId],
+      activePacketId: null,
+      upcomingPacketIds: [],
+      pendingPacketIds: [packet.runtimeId],
+      resolvedPacketIds: [],
+      backgroundFlows: [],
+      actionClock: 0,
+      actionResults: [],
+      objectives: [],
+      nextActionSequence: 1,
+      nextRuntimeOrdinal: 1,
+      daySeed: 55,
+      rngSeed: 55,
+    };
+
+    store.dispatch(gameTrafficActions.startDaySession(session));
+
+    store.dispatch(pullPacketToWorkbench());
+    store.dispatch(chooseStamp('blue'));
+    store.dispatch(applyStampSelection());
+    store.dispatch(submitVerdict('ACCEPT'));
+
+    let state = getGameState(store);
+    expect(state.traffic.backgroundFlows).toHaveLength(1);
+    expect(state.traffic.sessionEvents.some((event) => event.kind === 'backgroundPacketQueued')).toBe(true);
+
+    store.dispatch(waitOneTurn());
+    state = getGameState(store);
+
+    expect(
+      state.traffic.pendingPacketIds.some(
+        (packetId) => state.traffic.entities[packetId]?.spawnSource === 'backgroundFlow',
+      ),
+    ).toBe(true);
   });
 
   it('can overflow the inbox in late-game phases when arrivals outpace handling', () => {
@@ -855,6 +922,61 @@ describe('game backend flow', () => {
     expect(state.progress.screen).toBe('campaignComplete');
     expect(state.progress.lastResolution?.kind).toBe('failure');
     expect(state.traffic.pendingPacketIds.length).toBeGreaterThan(0);
+  });
+
+  it('allows REJECT without applying a route, lookup row, or stamp', () => {
+    const baseStore = createTestStore();
+    const baseGameState = baseStore.getState().game;
+    const store = configureStore({
+      reducer: {
+        game: gameReducer,
+      },
+      preloadedState: {
+        game: {
+          ...baseGameState,
+          progress: {
+            ...baseGameState.progress,
+            screen: 'inspection',
+            currentDayId: 'day-4',
+            nextDayId: null,
+            unlockedDayIds: ['day-4'],
+          },
+        },
+      },
+    });
+
+    const day = scenarioDayMap['day-4'];
+    const rejectPacket = createRuntimePacketRecord(day.packets[1]!, 0, 'scenario', 0);
+
+    store.dispatch(
+      gameTrafficActions.startDaySession({
+        dayId: day.id,
+        runId: 'run-day-4-reject',
+        sessionStatus: 'active',
+        packets: [rejectPacket],
+        packetOrder: [rejectPacket.runtimeId],
+        activePacketId: null,
+        upcomingPacketIds: [],
+        pendingPacketIds: [rejectPacket.runtimeId],
+        resolvedPacketIds: [],
+        backgroundFlows: [],
+        actionClock: 0,
+        actionResults: [],
+        objectives: [],
+        nextActionSequence: 1,
+        nextRuntimeOrdinal: 1,
+        daySeed: 44,
+        rngSeed: 44,
+      }),
+    );
+
+    store.dispatch(pullPacketToWorkbench());
+    store.dispatch(submitVerdict('REJECT'));
+
+    const state = getGameState(store);
+
+    expect(state.traffic.actionResults.at(-1)?.action).toBe('REJECT');
+    expect(state.traffic.actionResults.at(-1)?.outcomeCode).toBe('rejectedExpected');
   });
 
   it('fails a late-game shift when the action clock runs out before the quota is met', () => {

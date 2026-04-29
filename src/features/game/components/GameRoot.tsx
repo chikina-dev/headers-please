@@ -130,12 +130,9 @@ export function GameRoot() {
       progressIntegrity={viewModel.progressIntegrity}
       onChooseStamp={viewModel.actions.chooseStamp}
       onChooseRouteTarget={viewModel.actions.chooseRouteTarget}
-      onChooseTableEntry={viewModel.actions.chooseTableEntry}
       onPullPacketToWorkbench={viewModel.actions.pullPacketToWorkbench}
       onShelveWorkbenchPacket={viewModel.actions.shelveWorkbenchPacket}
       onWaitOneTurn={viewModel.actions.waitOneTurn}
-      onApplyRouteTargetSelection={viewModel.actions.applyRouteTargetSelection}
-      onApplyStampSelection={viewModel.actions.applyStampSelection}
       onSetDispatchIntent={viewModel.actions.setDispatchIntent}
       onCommitWorkbenchDispatch={viewModel.actions.commitWorkbenchDispatch}
       onDropStampSelection={viewModel.actions.dropStampSelection}
@@ -145,7 +142,6 @@ export function GameRoot() {
       onSetExternalPortFilter={viewModel.actions.setExternalPortFilter}
       onSetDestinationHostFilter={viewModel.actions.setDestinationHostFilter}
       onChooseRow={viewModel.actions.chooseTableEntry}
-      onApplyTableEntrySelection={viewModel.actions.applyTableEntrySelection}
       onSetReferenceTab={viewModel.actions.setReferenceTab}
       onSetReferenceOpen={viewModel.actions.setReferenceOpen}
       onCloseSelectedRow={viewModel.actions.closeSelectedTableEntry}

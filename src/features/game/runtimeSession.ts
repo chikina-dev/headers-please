@@ -26,6 +26,7 @@ import type {
 import { buildTrafficQueue, toRuntimePacket } from './random';
 import { pickRandomIndex } from './random';
 import { getScenarioPhase } from './phases';
+import { isScenarioPhaseAtLeast } from './phases';
 import { HOME_LABEL } from './scenarios';
 
 const defaultRuntimeConfig = {
@@ -339,6 +340,53 @@ export const createGeneratedScenarioResponsePacketRecord = (
   templatePacket: ScenarioPacket,
   ordinal: number,
 ): RuntimePacketRecord => createRuntimePacketRecord(templatePacket, ordinal, 'generatedResponse');
+
+export const createRegisteredEntryBackgroundFlow = (
+  day: ScenarioDay,
+  entry: TranslationTableEntry,
+  packet: RuntimePacketRecord,
+  actionClock: number,
+): BackgroundFlowState | null => {
+  if (!isScenarioPhaseAtLeast(day, 'timeoutLifecycle')) {
+    return null;
+  }
+
+  if (!entry.destinationHost || !entry.externalPort) {
+    return null;
+  }
+
+  const phaseProfile =
+    day.phaseId === 'manualClose'
+      ? { remainingPackets: 3, firstDelayActions: 1, intervalActions: 1, waitBudgetActions: 2 }
+      : day.phaseId === 'portExhaustion'
+        ? { remainingPackets: 2, firstDelayActions: 1, intervalActions: 2, waitBudgetActions: 2 }
+        : { remainingPackets: 2, firstDelayActions: 2, intervalActions: 2, waitBudgetActions: 2 };
+
+  return {
+    id: `background-flow-${entry.id}`,
+    entryId: entry.id,
+    source: {
+      host: entry.destinationHost,
+      ...(entry.destinationService ? { port: entry.destinationService } : {}),
+    },
+    destination: {
+      host: HOME_LABEL,
+      port: entry.externalPort,
+    },
+    expectedTarget: {
+      host: entry.internalHost,
+      ...(entry.internalPort ? { port: entry.internalPort } : {}),
+    },
+    protocol: entry.protocol,
+    prompt: `${packet.packet.destination.host} との通信はまだ開いている。継続返信に備える。`,
+    note: '開いたままの通信行は、後続の返信をさらに呼び込む。',
+    queuePosition: 'back',
+    intervalActions: phaseProfile.intervalActions,
+    nextArrivalAction: actionClock + phaseProfile.firstDelayActions,
+    remainingPackets: phaseProfile.remainingPackets,
+    waitBudgetActions: phaseProfile.waitBudgetActions,
+  };
+};
 
 export const createBackgroundFlowPacketRecord = (
   flow: BackgroundFlowState,

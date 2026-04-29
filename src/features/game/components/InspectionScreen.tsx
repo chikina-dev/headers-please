@@ -113,8 +113,6 @@ export function InspectionScreen({
   onPullPacketToWorkbench,
   onShelveWorkbenchPacket,
   onWaitOneTurn,
-  onApplyRouteTargetSelection,
-  onApplyStampSelection,
   onDropStampSelection,
   onSetDispatchIntent,
   onCommitWorkbenchDispatch,
@@ -124,7 +122,6 @@ export function InspectionScreen({
   onSetExternalPortFilter,
   onSetDestinationHostFilter,
   onChooseRow,
-  onApplyTableEntrySelection,
   onSetReferenceTab,
   onSetReferenceOpen,
   onCloseSelectedRow,
@@ -318,12 +315,9 @@ export function InspectionScreen({
   progressIntegrity: { ok: boolean }
   onChooseStamp: (stampId: StampId) => void
   onChooseRouteTarget: (routeTargetId: string) => void
-  onChooseTableEntry: (rowId: string) => void
   onPullPacketToWorkbench: (packetRuntimeId?: string) => void
   onShelveWorkbenchPacket: () => void
   onWaitOneTurn: () => void
-  onApplyRouteTargetSelection: () => void
-  onApplyStampSelection: () => void
   onDropStampSelection: () => void
   onSetDispatchIntent: (intent: 'ACCEPT' | 'REJECT') => void
   onCommitWorkbenchDispatch: () => void
@@ -333,7 +327,6 @@ export function InspectionScreen({
   onSetExternalPortFilter: (value: 'all' | StampId) => void
   onSetDestinationHostFilter: (value: string) => void
   onChooseRow: (rowId: string) => void
-  onApplyTableEntrySelection: () => void
   onSetReferenceTab: (tab: ReferenceTab) => void
   onSetReferenceOpen: (isOpen: boolean) => void
   onCloseSelectedRow: () => void
@@ -426,7 +419,7 @@ export function InspectionScreen({
 
   return (
     <ScreenFrame centered={false}>
-      <div className="grid h-full grid-rows-[minmax(0,1fr)_auto] gap-2 overflow-hidden">
+      <div className="grid h-full grid-rows-[minmax(0,1fr)_auto] gap-2 overflow-visible">
         <div className="grid min-h-0 grid-cols-[minmax(0,1fr)_20rem] gap-3 overflow-hidden">
         <section className="relative flex min-h-0 flex-col gap-3 overflow-hidden">
           {!isArchiveInspection && latestActionResult?.feedbackTone === 'success' && (
@@ -527,13 +520,10 @@ export function InspectionScreen({
             onPullPacketToWorkbench={onPullPacketToWorkbench}
             onShelveWorkbenchPacket={onShelveWorkbenchPacket}
             onWaitOneTurn={onWaitOneTurn}
-            onApplyRouteTargetSelection={onApplyRouteTargetSelection}
-            onApplyStampSelection={onApplyStampSelection}
             onDropStampSelection={onDropStampSelection}
             onSetDispatchIntent={onSetDispatchIntent}
             onCommitWorkbenchDispatch={onCommitWorkbenchDispatch}
             draftEntrySummary={draftEntrySummary}
-            onApplyTableEntrySelection={onApplyTableEntrySelection}
           />
         </section>
 
@@ -555,7 +545,6 @@ export function InspectionScreen({
               isReadOnly={isArchiveInspection}
               dragPayloadType={dayPhaseId === 'directRouting' ? 'route-slip' : 'table-entry'}
               onChooseRow={dayPhaseId === 'directRouting' ? onChooseRouteTarget : onChooseRow}
-              onApplySelectedRow={dayPhaseId === 'directRouting' ? onApplyRouteTargetSelection : onApplyTableEntrySelection}
             />
           ) : (
             <TranslationTablePanel
@@ -576,7 +565,6 @@ export function InspectionScreen({
               onSetExternalPortFilter={onSetExternalPortFilter}
               onSetDestinationHostFilter={onSetDestinationHostFilter}
               onChooseRow={onChooseRow}
-              onApplySelectedRow={onApplyTableEntrySelection}
               onCloseSelectedRow={onCloseSelectedRow}
             />
           )}
